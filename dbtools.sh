@@ -14,8 +14,8 @@ err=/tmp/dbtools.err
 # Commands test exists
 command -v pv >/dev/null 2>&1 || { echo >&2 "I require pv but it's not installed.  Aborting."; exit 1; }
 command -v tar >/dev/null 2>&1 || { echo >&2 "I require tar but it's not installed.  Aborting."; exit 1; }
-command -v 7za >/dev/null 2>&1 || { echo >&2 "I require 7za but it's not installed.  Aborting."; exit 1; }
-command -v unzip >/dev/null 2>&1 || { echo >&2 "I require unzip but it's not installed.  Aborting."; exit 1; }
+command -v 7za >/dev/null 2>&1 || { echo >&2 "I Warning! require 7za but it's not installed."; }
+command -v unzip >/dev/null 2>&1 || { echo >&2 "I Warning! require unzip but it's not installed."; }
 
 ################################################################################
 # funciton selectfile   {{{1
@@ -270,6 +270,7 @@ case "${action}" in
             tarfile=`tar -tf ${sqlfile} | grep -v "/"`
             pv ${sqlfile}|tar -zxO ${tarfile}|${execstr} 2>&1|grep -v "${dbwarn}"
         elif [ "${sqlfile##*.}" == "zip" ]; then
+            command -v unzip >/dev/null 2>&1 || { echo >&2 "I Error! require unzip but it's not installed.  Aborting."; exit 1; }
             size=`unzip -l ${sqlfile}|tail -n1|awk '{print $1}'`
             unzip -p ${sqlfile}|pv -s ${size}|${execstr} 2>&1|grep -v "${dbwarn}"
         elif [ "${sqlfile##*.}" == "7z" ]; then
@@ -277,7 +278,7 @@ case "${action}" in
                 size=`7za l ${sqlfile}|grep ".sql"|awk '{print $4}'`
                 7za x -so ${sqlfile} 2>/dev/null|pv -s ${size}|${execstr} 2>&1|grep -v "${dbwarn}"
             else
-                echo "Command 7za not found. Please do command brew install p7zip."
+                echo "Error! Command 7za not found. Please do command brew install p7zip."
                 exit;
             fi
         elif [ "${sqlfile##*.}" == "sql" ]; then
@@ -332,6 +333,7 @@ case "${action}" in
             tarfile=`tar -tf ${sqlfile}|grep -v "/"`
             pv ${sqlfile}|tar -zxO ${tarfile}|${execstr} 2>&1|grep -v "${dbwarn}"
         elif [ "${sqlfile##*.}" == "zip" ]; then
+            command -v unzip >/dev/null 2>&1 || { echo >&2 "I Error! require unzip but it's not installed.  Aborting."; exit 1; }
             size=`unzip -l ${sqlfile}|tail -n1|awk '{print $1}'`
             unzip -p ${sqlfile}|pv -s ${size}|${execstr} 2>&1|grep -v "${dbwarn}"
         elif [ "${sqlfile##*.}" == "7z" ]; then
@@ -339,7 +341,7 @@ case "${action}" in
                 size=`7za l ${sqlfile}|grep ".sql"|awk '{print $4}'`
                 7za x -so ${sqlfile} 2>/dev/null|pv -s ${size}|${execstr} 2>&1|grep -v "${dbwarn}"
             else
-                echo "Command 7za not found. Please do command brew install p7zip."
+                echo "Error! Command 7za not found. Please do command brew install p7zip."
                 exit;
             fi
         elif [ "${sqlfile##*.}" == "sql" ]; then
