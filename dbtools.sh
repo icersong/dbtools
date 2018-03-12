@@ -12,10 +12,10 @@ err=/tmp/dbtools.err
 
 ################################################################################
 # Commands test exists
-command -v pv >/dev/null 2>&1 || { echo >&2 "I require pv but it's not installed.  Aborting."; exit 1; }
-command -v tar >/dev/null 2>&1 || { echo >&2 "I require tar but it's not installed.  Aborting."; exit 1; }
-command -v 7za >/dev/null 2>&1 || { echo >&2 "I Warning! require 7za but it's not installed."; }
-command -v unzip >/dev/null 2>&1 || { echo >&2 "I Warning! require unzip but it's not installed."; }
+command -v pv >/dev/null 2>&1 || { echo >&2 "Error! require pv but it's not installed.  Abort."; exit 1; }
+command -v tar >/dev/null 2>&1 || { echo >&2 "Error! require tar but it's not installed.  Abort."; exit 1; }
+command -v 7za >/dev/null 2>&1 || { echo >&2 "Warning! require 7za but it's not installed."; }
+command -v unzip >/dev/null 2>&1 || { echo >&2 "Warning! require unzip but it's not installed."; }
 
 ################################################################################
 # funciton selectfile   {{{1
