@@ -139,7 +139,7 @@ scriptpath=$(cd `dirname $0`; pwd)
 action="$1"
 if [ -z "${action}" ]; then
     echo "Usage:"
-    echo "\$ ${scriptfile} <action>"
+    echo "\$ ${scriptfile} <action> [dbname [sqlfile]]"
     echo "  action: backup|import|restore|create|remove"
     exit;
 fi
@@ -225,6 +225,16 @@ dbwarn="^Warning: Using a password on the command line interface can be insecure
 
 
 ################################################################################
+# Input args {{{1
+if [ -z "${dbname}" ] && [ "$2" != "" ]; then
+    dbname="$2"
+fi
+if [ -z "${sqlfile}" ] && [ "$3" != "" ]; then
+    sqlfile="$3"
+fi
+
+
+################################################################################
 # do command    {{{1
 
 case "${action}" in
@@ -237,13 +247,19 @@ case "${action}" in
             exit;
         fi
         ${dbexec} ${dbargs} -e "CREATE DATABASE IF NOT EXISTS ${dbname} default charset utf8 COLLATE utf8_general_ci;"
+        echo "Database '${dbname}' created!"
         ;;
     "remove")
-        get_dbname "${dbexec} ${dbargs}"
+        if [ -z "${dbname}" ]; then
+            get_dbname "${dbexec} ${dbargs}"
+        fi
         ${dbexec} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
+        echo "Database '${dbname}' removed!"
         ;;
     "backup")
-        get_dbname "${dbexec} ${dbargs}"
+        if [ -z "${dbname}" ]; then
+            get_dbname "${dbexec} ${dbargs}"
+        fi
         echo "Backup data to ~.sql"
         mysqldump ${dbargs} ${dumpargs} ${dbname} 2>/dev/null| pv > ~.sql
         name=`date "+%Y%m%d%H%M%S"`
@@ -259,15 +275,17 @@ case "${action}" in
         # selected sql file
         if [ -z "${sqlfile}" ] || [ ! -f "${sqlfile}" ]; then
             selectfile "${sqlpath}/*.sql ${sqlpath}/*.zip ${sqlpath}/*.7z ${sqlpath}/*.tar.gz";
+            if [ ! -f "${selected}" ]; then
+                echo "No sql file selected."
+                exit;
+            fi
+            sqlfile=${selected}
         fi
-        if [ ! -f "${selected}" ]; then
-            echo "No sql file selected."
-            exit;
-        fi
-        sqlfile=${selected}
         echo "Sql file $sqlfile selected."
         # select database
-        get_dbname "${dbexec} ${dbargs}"
+        if [ -z "${dbname}" ]; then
+            get_dbname "${dbexec} ${dbargs}"
+        fi
         # import database
         echo "Import data from ${sqlfile}"
         execstr="${dbexec} ${dbargs} --database ${dbname}"
@@ -298,15 +316,17 @@ case "${action}" in
         # selected sql file
         if [ -z "${sqlfile}" ] || [ ! -f "${sqlfile}" ]; then
             selectfile "${sqlpath}/*.sql ${sqlpath}/*.zip ${sqlpath}/*.7z ${sqlpath}/*.tar.gz";
+            if [ ! -f "${selected}" ]; then
+                echo "No sql file selected."
+                exit;
+            fi
+            sqlfile=${selected}
         fi
-        if [ ! -f "${selected}" ]; then
-            echo "No sql file selected."
-            exit;
-        fi
-        sqlfile=${selected}
         echo "Sql file $sqlfile selected."
         # select database
-        get_dbname "${dbexec} ${dbargs}"
+        if [ -z "${dbname}" ]; then
+            get_dbname "${dbexec} ${dbargs}"
+        fi
         # drop database
         echo "Drop database ${dbname}"
         # echo "drop database if exists ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
