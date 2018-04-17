@@ -80,31 +80,47 @@ function selectfile() {
 #    $?: valid database count
 #    $databases: database list
 function listdatabases() {
-if [ -z "$sql" ]; then
-    local sql=/tmp/~.sql
-fi
-cat << SQLEOF >$sql
-    show databases
-    where \`Database\` not in ('test', 'mysql')
-    and \`Database\` not like '%_schema';
-SQLEOF
-local name=
-local lst=
-local cnt=0
+_sql="SHOW DATABASES WHERE \`Database\` NOT IN ('test', 'mysql') AND \`Database\` NOT LIKE '%_schema';"
+local _name=
+local _lst=
+local _cnt=0
 # for name in `${1} <$sql 2>/dev/null |grep -v "^Warning: Using a password"`
-for name in `${1} <$sql 2>/dev/null`
+for _name in `${1} -e "${_sql}" 2>/dev/null`
 do
-    if [ "$name" == "Database" ]; then
+    if [ "${_name}" == "Database" ]; then
         continue
     fi
-    lst="$lst $name"
-    cnt=$(($cnt+1))
+    _lst="${_lst} ${_name}"
+    _cnt=$((${_cnt}+1))
 done
-rm -f $sql >/dev/null 2>&1
-databases=$lst
-return $cnt
+# rm -f $sql >/dev/null 2>&1
+databases=${_lst}
+return ${_cnt}
 }
 
+
+################################################################################
+# usage:
+#    get_dbname;
+#    echo $?, $databases
+#    $?: valid database count
+#    $databases: database list
+function get_dbname() {
+    # select database
+    listdatabases "${1}"
+    echo "请选择数据库！"
+    select dbname in $databases; do
+        break;
+    done
+    if [ -z "${dbname}" ]; then
+        read -p "请输入要数据库名称:" dbname
+    fi
+    if [ -z "${dbname}" ]; then
+        echo "No database specified."
+        exit;
+    fi
+    return 0
+}
 
 ################################################################################
 # envariment    {{{1
@@ -124,7 +140,7 @@ action="$1"
 if [ -z "${action}" ]; then
     echo "Usage:"
     echo "\$ ${scriptfile} <action>"
-    echo "  action: backup|import|restore"
+    echo "  action: backup|import|restore|create|remove"
     exit;
 fi
 
@@ -212,19 +228,22 @@ dbwarn="^Warning: Using a password on the command line interface can be insecure
 # do command    {{{1
 
 case "${action}" in
-    "backup")
+    "create")
         if [ -z "${dbname}" ]; then
-            listdatabases "${dbexec} ${dbargs}"
-            echo "请选择要备份的数据库！"
-            select name in $databases; do
-                dbname=$name
-                break;
-            done
+            read -p "请输入要创建数据库名称:" dbname
         fi
         if [ -z "${dbname}" ]; then
-            echo "No database selected."
+            echo "No database specified."
             exit;
         fi
+        ${dbexec} ${dbargs} -e "CREATE DATABASE IF NOT EXISTS ${dbname} default charset utf8 COLLATE utf8_general_ci;"
+        ;;
+    "remove")
+        get_dbname "${dbexec} ${dbargs}"
+        ${dbexec} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
+        ;;
+    "backup")
+        get_dbname "${dbexec} ${dbargs}"
         echo "Backup data to ~.sql"
         mysqldump ${dbargs} ${dumpargs} ${dbname} 2>/dev/null| pv > ~.sql
         name=`date "+%Y%m%d%H%M%S"`
@@ -248,21 +267,7 @@ case "${action}" in
         sqlfile=${selected}
         echo "Sql file $sqlfile selected."
         # select database
-        if [ -z "${dbname}" ]; then
-            listdatabases "${dbexec} ${dbargs}"
-            echo "请选择要恢复的数据库！"
-            select name in $databases; do
-                dbname=$name
-                break;
-            done
-        fi
-        if [ -z "${dbname}" ]; then
-            read -p "请输入要恢复的数据库名称:" dbname
-        fi
-        if [ -z "${dbname}" ]; then
-            echo "No database specified."
-            exit;
-        fi
+        get_dbname "${dbexec} ${dbargs}"
         # import database
         echo "Import data from ${sqlfile}"
         execstr="${dbexec} ${dbargs} --database ${dbname}"
@@ -289,9 +294,6 @@ case "${action}" in
         echo "completed!!!"
         exit;
         ;;
-    "dropdb")
-        database.user=${text}
-        ;;
     "restore")
         # selected sql file
         if [ -z "${sqlfile}" ] || [ ! -f "${sqlfile}" ]; then
@@ -304,21 +306,7 @@ case "${action}" in
         sqlfile=${selected}
         echo "Sql file $sqlfile selected."
         # select database
-        if [ -z "${dbname}" ]; then
-            listdatabases "${dbexec} ${dbargs}"
-            echo "请选择要恢复的数据库！"
-            select name in $databases; do
-                dbname=$name
-                break;
-            done
-        fi
-        if [ -z "${dbname}" ]; then
-            read -p "请输入要恢复的数据库名称:" dbname
-        fi
-        if [ -z "${dbname}" ]; then
-            echo "No database specified."
-            exit;
-        fi
+        get_dbname "${dbexec} ${dbargs}"
         # drop database
         echo "Drop database ${dbname}"
         # echo "drop database if exists ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
