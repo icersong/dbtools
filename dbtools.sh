@@ -12,10 +12,6 @@ err=/tmp/dbtools.err
 
 ################################################################################
 # Commands test exists
-command -v pv >/dev/null 2>&1 || { echo >&2 "Error! require pv but it's not installed.  Abort."; exit 1; }
-command -v tar >/dev/null 2>&1 || { echo >&2 "Error! require tar but it's not installed.  Abort."; exit 1; }
-command -v 7za >/dev/null 2>&1 || { echo >&2 "Warning! require 7za but it's not installed."; }
-command -v unzip >/dev/null 2>&1 || { echo >&2 "Warning! require unzip but it's not installed."; }
 
 function check_command_error() {
     command -v $1 >/dev/null 2>&1 || {
@@ -159,9 +155,9 @@ if [ -z "${action}" ]; then
     echo "\$ ${scriptfile} create [dbname]"
     echo "\$ ${scriptfile} remove [dbname]"
     echo "\$ ${scriptfile} backup [dbname]"
-    echo "\$ ${scriptfile} import [dbname [filename]]"
-    echo "\$ ${scriptfile} export [dbname[:tables] [filename]]"
-    echo "\$ ${scriptfile} restore [dbname [filename]]"
+    echo "\$ ${scriptfile} import [dbname] [filename]"
+    echo "\$ ${scriptfile} export [dbname][:tables] [filename]"
+    echo "\$ ${scriptfile} restore [dbname] [filename]"
     exit;
 fi
 
@@ -254,30 +250,28 @@ function action_import () {
 # $1: full-filename
 # $2: compress name with out ext
 action_compress () {
-    lst='tar zip'
-    for x in $lst
-    do
-        check_command_warn "$x";
-        if [ "$check_command_warn" == "1" ]; then
-            case "${x}" in
-                "tar")
-                    cmp="tar zvcf"
-                    ext=".tar.gz"
-                    ;;
-                "*")
-                    cmp="$x"
-                    ext=".$x"
-            esac
-            break;
-        fi
-    done
-    if [ "$cmp" == "" ]; then
-        echo "No compression tools. ignore compress."
-        echo "Rename file to ${2}${ext}"
-
+    ext=${1##*.}
+    if [ "$ext" == "" -o "$ext" == "$1" ]; then
+        output="$1.zip"
+        ext="zip"
     else
-        echo "${cmp} -> ${2}${ext}"
-        ${cmp} ${2}${ext} ${1} >/dev/null
+        output="$1"
+    fi
+    if [ "$ext" == "zip" ]; then
+        check_command_error "zip"
+        cmp="zip"
+    elif [ "$ext" == "gz" -o "$ext" == "tgz" ]; then
+        check_command_error "tar"
+        cmp="tar zvcf"
+    else
+        cmp=""
+    fi
+    if [ "$cmp" == "" ]; then
+        echo "Rename -> ${output}"
+        mv $2 $1
+    else
+        echo "${cmp} -> ${output}"
+        ${cmp} ${output} ${2} >/dev/null
     fi
 }
 
@@ -304,7 +298,7 @@ action_export () {
     if [ "${filename}" == "" ]; then
         filename="${dbname}-${name}"
     fi
-    action_compress ${name}.sql ${filename};
+    action_compress ${filename} ${name}.sql;
     rm -f ${name}.sql ~.sql
 }
 
