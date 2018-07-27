@@ -147,21 +147,23 @@ scriptpath=$(cd `dirname $0`; pwd)
 
 
 ################################################################################
-# action
+# usage
+function usage() {
+        echo "Usage:"
+        echo "\$ ${scriptfile} <create|remove|backup|import|export|restore> [dbname ...]"
+        echo "\$ ${scriptfile} create [dbname]"
+        echo "\$ ${scriptfile} remove [dbname]"
+        echo "\$ ${scriptfile} backup [dbname]"
+        echo "\$ ${scriptfile} import [dbname] [filename]"
+        echo "\$ ${scriptfile} export [dbname][:tables] [filename]"
+        echo "\$ ${scriptfile} restore [dbname] [filename]"
+        exit;
+}
+
 action="$1"
 if [ -z "${action}" ]; then
-    echo "Usage:"
-    echo "\$ ${scriptfile} <create|remove|backup|import|export|restore> [dbname ...]"
-    echo "\$ ${scriptfile} create [dbname]"
-    echo "\$ ${scriptfile} remove [dbname]"
-    echo "\$ ${scriptfile} backup [dbname]"
-    echo "\$ ${scriptfile} import [dbname] [filename]"
-    echo "\$ ${scriptfile} export [dbname][:tables] [filename]"
-    echo "\$ ${scriptfile} restore [dbname] [filename]"
-    exit;
+    usage;
 fi
-
-
 ################################################################################
 # config variables
 scriptconfig="$scriptpath/${scriptname}.cfg"
@@ -349,7 +351,8 @@ case "${action}" in
         # import database
         action_import;
         ;;
-    "*")
-        echo "Unknown action ${action}!!!"
+    *)
+        echo "Error! Unknown action \"${action}\"."
+        usage;
         ;;
 esac
