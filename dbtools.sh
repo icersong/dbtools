@@ -136,10 +136,19 @@ function get_dbname() {
 
 ################################################################################
 # envariment    {{{1
-scriptfile=${0##*/}
+# echo "scriptPath1: "$(cd `dirname $0`; pwd)
+# echo "scriptPath2: "$(pwd)
+# echo "scriptPath3: "$(dirname $(readlink -f $0))
+# echo "scriptPath4: "$(cd $(dirname ${BASH_SOURCE:-$0});pwd)
+# echo -n "scriptPath5: " && dirname $(readlink -f ${BASH_SOURCE[0]})
+
+# scriptfile=${0##*/}
+scriptfile="$(readlink -f ${BASH_SOURCE[0]})"
+scriptfile=${scriptfile##*/}
 scriptname=${scriptfile%.*}
 script_ext=${scriptfile##*.}
-scriptpath=$(cd `dirname $0`; pwd)
+# scriptpath=$(cd `dirname $0`; pwd)
+scriptpath="`dirname $(readlink -f ${BASH_SOURCE[0]})`"
 # echo scriptfile: $scriptfile
 # echo scriptname: $scriptname
 # echo script_ext: $script_ext
