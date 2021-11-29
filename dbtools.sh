@@ -258,8 +258,8 @@ function action_import () {
     fi
 }
 
-# $1: full-filename
-# $2: compress name with out ext
+# $1: output filename
+# $2: source filename
 action_compress () {
     ext=${1##*.}
     if [ "$ext" == "" -o "$ext" == "$1" ]; then
