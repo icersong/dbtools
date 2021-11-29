@@ -263,8 +263,8 @@ function action_import () {
 action_compress () {
     ext=${1##*.}
     if [ "$ext" == "" -o "$ext" == "$1" ]; then
-        output="$1.zip"
-        ext="zip"
+        output="$1.tgz"
+        ext="tgz"
     else
         output="$1"
     fi
