@@ -10,6 +10,16 @@ debug=false
 log=/tmp/dbtools.log
 err=/tmp/dbtools.err
 
+
+################################################################################
+
+if [[ "$OSTYPE" =~ ^darwin ]]; then
+    readlink=greadlink
+else
+    readlink=readlink
+fi
+
+
 ################################################################################
 # Commands test exists
 
@@ -143,12 +153,12 @@ function get_dbname() {
 # echo -n "scriptPath5: " && dirname $(readlink -f ${BASH_SOURCE[0]})
 
 # scriptfile=${0##*/}
-scriptfile="$(readlink -f ${BASH_SOURCE[0]})"
+scriptfile="$($readlink -f ${BASH_SOURCE[0]})"
 scriptfile=${scriptfile##*/}
 scriptname=${scriptfile%.*}
 script_ext=${scriptfile##*.}
 # scriptpath=$(cd `dirname $0`; pwd)
-scriptpath="`dirname $(readlink -f ${BASH_SOURCE[0]})`"
+scriptpath="`dirname $($readlink -f ${BASH_SOURCE[0]})`"
 # echo scriptfile: $scriptfile
 # echo scriptname: $scriptname
 # echo script_ext: $script_ext
@@ -177,7 +187,7 @@ fi
 # config variables
 scriptconfig="$scriptpath/${scriptname}.cfg"
 if [ ! -f "$scriptconfig" ]; then
-    echo "Error! Cofnig file '$scriptconfig' not exists."
+    echo "Error! Config file '$scriptconfig' not exists."
     exit
 fi
 
