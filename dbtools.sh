@@ -15,8 +15,10 @@ err=/tmp/dbtools.err
 
 if [[ "$OSTYPE" =~ ^darwin ]]; then
     readlink=greadlink
+    sed=gsed
 else
     readlink=readlink
+    sed=sed
 fi
 
 
@@ -205,6 +207,7 @@ charset="charset utf8 COLLATE utf8_general_ci"
 dbexec="mysql"
 dbargs="--defaults-extra-file=${scriptconfig}"
 dbwarn="^Warning: Using a password on the command line interface can be insecure."
+skip_definer="$sed \"s/\\\\/\\\\*!5001[0-9] DEFINER=[^ ][^*]*\\\\*\\\\///g\""
 
 # echo "action: ${action}"
 # echo "database: ${dbname}"
@@ -245,6 +248,9 @@ function action_import () {
         check_command_error 'tar';
         tarfile=`tar -tf ${filename} | grep -v "/"`
         pv ${filename}|tar -zxO ${tarfile}|${execstr} 2>&1|grep -v "${dbwarn}"
+    elif [ "${filename##*.}" == "gz" ]; then
+        check_command_error 'gunzip';
+        pv ${filename} | gunzip -c | ${execstr} | grep -v "${dbwarn}"
     elif [ "${filename##*.}" == "zip" ]; then
         check_command_error 'unzip';
         command -v unzip >/dev/null 2>&1 || {
@@ -302,25 +308,23 @@ action_compress () {
 # $3: filename
 action_dumpdata () {
     if [ "$2" == "" ]; then
-        mysqldump ${dbargs} ${dumpargs} ${1} 2>/dev/null| pv > ${3}
+        mysqldump ${dbargs} ${dumpargs} ${1} \
+            | sh -c "$skip_definer" | xz | pv > ${3}
     else
-        mysqldump ${dbargs} ${dumpargs} -B ${1} --tables ${2} 2>/dev/null| pv > ${3}
+        mysqldump ${dbargs} ${dumpargs} -B ${1} --tables ${2} \
+            | sh -c "$skip_definer" | xz | pv > ${3}
     fi
 }
 
 
 action_export () {
     select_database;
-    echo "Dump data -> ~.sql"
-    action_dumpdata "${dbname}" "${tables}" "~.sql";
-    name=`date "+%Y%m%d%H%M%S"`
-    echo "Move ~.sql -> ${name}.sql"
-    mv ~.sql ${name}.sql
-    if [ "${filename}" == "" ]; then
+    if [[ "${filename}" == "" ]]; then
+        name="`date \"+%Y%m%d%H%M%S\"`.gz"
         filename="${dbname}-${name}"
     fi
-    action_compress ${filename} ${name}.sql;
-    rm -f ${name}.sql ~.sql
+    echo "Dump data -> $filename"
+    action_dumpdata "${dbname}" "${tables}" "$filename";
 }
 
 
