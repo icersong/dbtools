@@ -223,7 +223,7 @@ skip_definer="$sed \"s/\\\\/\\\\*!5001[0-9] DEFINER=[^ ][^*]*\\\\*\\\\///g\""
 function select_sql_file () {
     # selected sql file
     if [ -z "${filename}" ] || [ ! -f "${filename}" ]; then
-        selectfile "*.sql *.zip *.7z *.tgz *.tar.gz";
+        selectfile "*.sql *.zip *.7z *.tgz *.tar.gz *.gz";
         if [ ! -f "${selected}" ]; then
             echo "No sql file selected."
             exit;
@@ -309,10 +309,10 @@ action_compress () {
 action_dumpdata () {
     if [ "$2" == "" ]; then
         mysqldump ${dbargs} ${dumpargs} ${1} \
-            | sh -c "$skip_definer" | xz | pv > ${3}
+            | sh -c "$skip_definer" | gzip | pv > ${3}
     else
         mysqldump ${dbargs} ${dumpargs} -B ${1} --tables ${2} \
-            | sh -c "$skip_definer" | xz | pv > ${3}
+            | sh -c "$skip_definer" | gzip | pv > ${3}
     fi
 }
 
