@@ -223,7 +223,7 @@ skip_definer="$sed \"s/\\\\/\\\\*!5001[0-9] DEFINER=[^ ][^*]*\\\\*\\\\///g\""
 function select_sql_file () {
     # selected sql file
     if [ -z "${filename}" ] || [ ! -f "${filename}" ]; then
-        selectfile "*.sql *.zip *.7z *.tgz *.tar.gz *.gz";
+        selectfile "*.sql *.zip *.7z *.tgz *.tar.gz *.gz *.xz";
         if [ ! -f "${selected}" ]; then
             echo "No sql file selected."
             exit;
@@ -239,6 +239,25 @@ function select_database() {
     fi
 }
 
+# $1: dbname
+# $3: filename
+function import_xz() {
+    # Get uncompressed size
+    dbname=$1
+    fname=$2
+    echo -n "Get uncompressed size"
+    info=`xz -l -v $fname | grep "Uncompressed"`
+    info=${info##*(}
+    size=${info%% *}
+    echo " $size Bytes"
+    size=${size//,/}
+
+    # Import database
+    echo "Import ./$fname -> $dbname"
+    ldbargs="-hlocalhost -uroot -p123456"
+    cat ./$fname | xz -d | pv -s $size | mysql $dbargs --database $dbname
+}
+
 function action_import () {
     # import database
     echo "Import data from ${filename}"
@@ -251,6 +270,9 @@ function action_import () {
     elif [ "${filename##*.}" == "gz" ]; then
         check_command_error 'gunzip';
         pv ${filename} | gunzip -c | ${execstr} | grep -v "${dbwarn}"
+    elif [ "${filename##*.}" == "xz" ]; then
+        check_command_error 'xz';
+        import_xz $dbname $filename
     elif [ "${filename##*.}" == "zip" ]; then
         check_command_error 'unzip';
         command -v unzip >/dev/null 2>&1 || {
