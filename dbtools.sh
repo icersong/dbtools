@@ -364,8 +364,13 @@ case "${action}" in
         ;;
     "remove")
         select_database;
-        ${dbexec} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
-        echo "Database '${dbname}' removed!"
+        read -p "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
+        if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
+            ${dbexec} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
+            echo "Database '${dbname}' removed!"
+        else
+            echo 'Cancelled!'
+        fi
         ;;
     "backup")
         action_export;
@@ -387,9 +392,15 @@ case "${action}" in
         # select database
         select_database;
         # drop database
-        echo "Drop database ${dbname}"
-        # echo "drop database if exists ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
-        echo "drop database if exists ${dbname};"|${dbexec} ${dbargs}
+        read -p "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
+        if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
+            echo "Drop database ${dbname}"
+            # echo "drop database if exists ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
+            echo "drop database if exists ${dbname};"|${dbexec} ${dbargs}
+        else
+            echo 'Cancelled!'
+            exit;
+        fi
         # create database
         echo "Create database ${dbname}"
         echo "create database ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
