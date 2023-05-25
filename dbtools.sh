@@ -365,6 +365,7 @@ case "${action}" in
     "remove")
         select_database;
         read -p "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
+        echo ""
         if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
             ${dbexec} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
             echo "Database '${dbname}' removed!"
@@ -392,8 +393,9 @@ case "${action}" in
         # select database
         select_database;
         # drop database
-        read -p "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
-        if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
+        read -p "Ary you sure to delete database '${dbname}' (Yes/No)?" -n 1 confirm
+        echo ""
+        if [[ $confirm == 'Y' ]] || [[ $confirm == 'y' ]]; then
             echo "Drop database ${dbname}"
             # echo "drop database if exists ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
             echo "drop database if exists ${dbname};"|${dbexec} ${dbargs}
