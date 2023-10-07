@@ -330,10 +330,10 @@ action_compress () {
 # $3: filename
 action_dumpdata () {
     if [ "$2" == "" ]; then
-        mysqldump -R -E ${dbargs} ${dumpargs} ${1} \
+        mysqldump ${dbargs} ${dumpargs} -R -E ${1} \
             | sh -c "$skip_definer" | gzip | pv > ${3}
     else
-        mysqldump  -R -E ${dbargs} ${dumpargs} -B ${1} --tables ${2} \
+        mysqldump  -R -E ${dbargs} ${dumpargs} -R -E -B ${1} --tables ${2} \
             | sh -c "$skip_definer" | gzip | pv > ${3}
     fi
 }
