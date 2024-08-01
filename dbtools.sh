@@ -1,8 +1,8 @@
 #!/bin/bash
 # Copyright: Wed Jan 14 20:17:38 CST 2015
 # Author: icersong
-# Modified: Thu Jan 15 03:47:03 CST 2015
-# Version: 2.0
+# Modified: Friday, August 02, 2024 AM03:25:22 HKT
+# Version: 3.0
 
 
 ################################################################################
@@ -186,28 +186,33 @@ if [ -z "${action}" ]; then
     usage;
 fi
 ################################################################################
-# config variables
+# load config
 scriptconfig="$scriptpath/${scriptname}.cfg"
-if [ ! -f "$scriptconfig" ]; then
+if [[ ! -f $scriptconfig ]]; then
     echo "Error! Config file '$scriptconfig' not exists."
     exit
 fi
+source $scriptconfig
 
-scriptname=${scriptfile%.*}
-script_ext=${scriptfile##*.}
+# config defaults
+charset=${charset:-"charset utf8 COLLATE utf8_general_ci"}
+dumpargs=${dumpargs:-}
+dbdump=${dbdump:-mysqldump}
+dbcli=${dbcli:-"mysql"}
+dbargs=${dbargs:-"--defaults-extra-file=$scriptpath/dbcli.cfg"}
+dbwarn="^Warning: Using a password on the command line interface can be insecure."
+skip_definer="$sed \"s/\\\\/\\\\*!5001[0-9] DEFINER=[^ ][^*]*\\\\*\\\\///g\""
 
+# merge to new variables
+dbargs="-h127.0.0.1 -uroot -pmariadb"
+
+################################################################################
+# script args
 dbname="${2%:*}"
 if [ "$dbname" != "$2" ]; then
     tables=${2##*.}
 fi
 filename="$3"
-dumpargs=
-dumpexec=
-charset="charset utf8 COLLATE utf8_general_ci"
-dbexec="mysql"
-dbargs="--defaults-extra-file=${scriptconfig}"
-dbwarn="^Warning: Using a password on the command line interface can be insecure."
-skip_definer="$sed \"s/\\\\/\\\\*!5001[0-9] DEFINER=[^ ][^*]*\\\\*\\\\///g\""
 
 # echo "action: ${action}"
 # echo "database: ${dbname}"
@@ -235,7 +240,7 @@ function select_sql_file () {
 
 function select_database() {
     if [ -z "${dbname}" ]; then
-        get_dbname "${dbexec} ${dbargs}"
+        get_dbname "${dbcli} ${dbargs}"
     fi
 }
 
@@ -262,7 +267,7 @@ function action_import () {
     # import database
     echo "Import data from ${filename}"
     check_command_error 'pv';
-    execstr="${dbexec} ${dbargs} --database ${dbname}"
+    execstr="${dbcli} ${dbargs} --database ${dbname}"
     if [ "${filename##*.tar.}" == "gz" ] || [ "${filename##*.}" == "tgz" ]; then
         check_command_error 'tar';
         tarfile=`tar -tf ${filename} | grep -v "/"`
@@ -330,10 +335,10 @@ action_compress () {
 # $3: filename
 action_dumpdata () {
     if [ "$2" == "" ]; then
-        mysqldump ${dbargs} ${dumpargs} -R -E ${1} \
+        ${dbdump} ${dbargs} ${dumpargs} -R -E ${1} \
             | sh -c "$skip_definer" | gzip | pv > ${3}
     else
-        mysqldump  -R -E ${dbargs} ${dumpargs} -R -E -B ${1} --tables ${2} \
+        ${dbdump} -R -E ${dbargs} ${dumpargs} -R -E -B ${1} --tables ${2} \
             | sh -c "$skip_definer" | gzip | pv > ${3}
     fi
 }
@@ -359,7 +364,7 @@ case "${action}" in
             echo "No database specified."
             exit;
         fi
-        ${dbexec} ${dbargs} -e "CREATE DATABASE IF NOT EXISTS ${dbname} default ${charset};"
+        ${dbcli} ${dbargs} -e "CREATE DATABASE IF NOT EXISTS ${dbname} default ${charset};"
         echo "Database '${dbname}' created!"
         ;;
     "remove")
@@ -367,7 +372,7 @@ case "${action}" in
         read -p "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
         echo ""
         if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
-            ${dbexec} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
+            ${dbcli} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
             echo "Database '${dbname}' removed!"
         else
             echo 'Cancelled!'
@@ -397,15 +402,15 @@ case "${action}" in
         echo ""
         if [[ $confirm == 'Y' ]] || [[ $confirm == 'y' ]]; then
             echo "Drop database ${dbname}"
-            # echo "drop database if exists ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
-            echo "drop database if exists ${dbname};"|${dbexec} ${dbargs}
+            # echo "drop database if exists ${dbname};"|${dbcli} ${dbargs} 2>&1|grep -v "${dbwarn}"
+            echo "drop database if exists ${dbname};"|${dbcli} ${dbargs}
         else
             echo 'Cancelled!'
             exit;
         fi
         # create database
         echo "Create database ${dbname}"
-        echo "create database ${dbname};"|${dbexec} ${dbargs} 2>&1|grep -v "${dbwarn}"
+        echo "create database ${dbname};"|${dbcli} ${dbargs} 2>&1|grep -v "${dbwarn}"
         # import database
         action_import;
         ;;
