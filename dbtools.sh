@@ -154,13 +154,24 @@ function get_dbname() {
 # echo "scriptPath4: "$(cd $(dirname ${BASH_SOURCE:-$0});pwd)
 # echo -n "scriptPath5: " && dirname $(readlink -f ${BASH_SOURCE[0]})
 
+#### SCRIPT INFO
+if [[ -z "${BASH_SOURCE[0]}" ]] || [[ "${BASH_SOURCE[0]}" == "$0"  ]]; then
+    # 直接执行此文件或者执行了此文件的LINK
+    SCRIPT_PATH=$(readlink -f "$0")
+else
+    # 使用source命令引用了此文件
+    SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
+fi
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+echo $SCRIPT_DIR
+
 # scriptfile=${0##*/}
 scriptfile="$($readlink -f ${BASH_SOURCE[0]})"
 scriptfile=${scriptfile##*/}
 scriptname=${scriptfile%.*}
 script_ext=${scriptfile##*.}
+scriptpath=$SCRIPT_DIR
 # scriptpath=$(cd `dirname $0`; pwd)
-scriptpath="`dirname $($readlink -f ${BASH_SOURCE[0]})`"
 # echo scriptfile: $scriptfile
 # echo scriptname: $scriptname
 # echo script_ext: $script_ext
