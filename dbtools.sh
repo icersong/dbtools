@@ -7,8 +7,8 @@
 
 ################################################################################
 debug=false
-log=/tmp/dbtools.log
-err=/tmp/dbtools.err
+# log=/tmp/dbtools.log
+# err=/tmp/dbtools.err
 
 
 ################################################################################
@@ -18,7 +18,7 @@ if [[ "$OSTYPE" =~ ^darwin ]]; then
     sed=gsed
 else
     readlink=readlink
-    sed=sed
+    sed="sed"
 fi
 
 
@@ -26,19 +26,19 @@ fi
 # Commands test exists
 
 function check_command_error() {
-    command -v $1 >/dev/null 2>&1 || {
+    command -v "$1" >/dev/null 2>&1 || {
         echo >&2 "Error! require command $1 but it's not installed.  Abort!!!";
         exit 1;
     }
 }
 
-function check_command_warn() {
-    check_command_warn=1
-    command -v $1 >/dev/null 2>&1 || {
-        echo >&2 "Warning! require command $1 but it's not installed.";
-        check_command_warn=0;
-    }
-}
+# function check_command_warn() {
+#     check_command_warn=1
+#     command -v "$1" >/dev/null 2>&1 || {
+#         echo >&2 "Warning! require command $1 but it's not installed.";
+#         check_command_warn=0;
+#     }
+# }
 
 
 ################################################################################
@@ -52,25 +52,28 @@ function check_command_warn() {
 selected=
 function selectfile() {
     # local lst=`ls -w ${1} 2>/dev/null`
-    local lst=`ls ${1} 2>/dev/null`
-    local idx=1
-    local name=
-    local line=
-    local input=
+    # local lst=`ls ${1} 2>/dev/null`
+    local lst
+    local name
+    local line
+    local input
     if [ "$debug" == "true" ]; then
         echo Select file from: "${1}"
     fi
+    lst="$(ls ${1} 2>/dev/null)"
     if [ -z "$lst" ]; then
         echo None for select.
     fi
+
+    local idx=1
     for line in $lst
     do
         name=${line##*/}
         # echo ${idx}. ${name%.*}
-        echo ${idx}. ${name}
-        idx=$(($idx+1))
+        echo ${idx}. "${name}"
+        idx=$((idx+1))
     done
-    read -p "请输入选择的编号或名称:" input
+    read -rp "请输入选择的编号或名称:" input
     idx=1
     for line in $lst
     do
@@ -79,13 +82,13 @@ function selectfile() {
             selected=$line
             break
         fi
-        idx=$(($idx+1))
+        idx=$((idx+1))
     done
     if [ "$debug" == "true" ]; then
         if [ -z "$selected" ]; then
             echo "None selected!"
         else
-            echo Selected: ${idx}. ${selected##*/}
+            echo "Selected: ${idx}. ${selected##*/}"
         fi
     fi
     if [ -z "$selected" ]; then
@@ -104,18 +107,18 @@ function selectfile() {
 #    $?: valid database count
 #    $databases: database list
 function listdatabases() {
-_sql="SHOW DATABASES WHERE \`Database\` NOT IN ('test', 'mysql') AND \`Database\` NOT LIKE '%_schema';"
+_sql="SHOW DATABASES WHERE \`Database\` NOT IN ('sys','mysql') AND \`Database\` NOT LIKE '%_schema';"
 local _name=
 local _lst=
 local _cnt=0
 # for name in `${1} <$sql 2>/dev/null |grep -v "^Warning: Using a password"`
-for _name in `${1} -e "${_sql}" 2>/dev/null`
+for _name in $(${1} -e "${_sql}" 2>/dev/null)
 do
     if [ "${_name}" == "Database" ]; then
         continue
     fi
     _lst="${_lst} ${_name}"
-    _cnt=$((${_cnt}+1))
+    _cnt=$((_cnt+1))
 done
 # rm -f $sql >/dev/null 2>&1
 databases=${_lst}
@@ -137,7 +140,7 @@ function get_dbname() {
         break;
     done
     if [ -z "${dbname}" ]; then
-        read -p "请输入要数据库名称:" dbname
+        read -rp "请输入要数据库名称:" dbname
     fi
     if [ -z "${dbname}" ]; then
         echo "No database specified."
@@ -163,20 +166,18 @@ else
     SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
 fi
 SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
-echo $SCRIPT_DIR
 
 # scriptfile=${0##*/}
-scriptfile="$($readlink -f ${BASH_SOURCE[0]})"
+scriptfile="$($readlink -f "${BASH_SOURCE[0]}")"
 scriptfile=${scriptfile##*/}
 scriptname=${scriptfile%.*}
-script_ext=${scriptfile##*.}
+# script_ext=${scriptfile##*.}
 scriptpath=$SCRIPT_DIR
 # scriptpath=$(cd `dirname $0`; pwd)
 # echo scriptfile: $scriptfile
 # echo scriptname: $scriptname
 # echo script_ext: $script_ext
 # echo scriptpath: $scriptpath
-
 
 ################################################################################
 # usage
@@ -199,23 +200,24 @@ fi
 ################################################################################
 # load config
 scriptconfig="$scriptpath/${scriptname}.cfg"
-if [[ ! -f $scriptconfig ]]; then
+if [[ ! -f "$scriptconfig" ]]; then
     echo "Error! Config file '$scriptconfig' not exists."
     exit
 fi
-source $scriptconfig
+
+# shellcheck source=./dbtools.cfg
+source "$scriptconfig"
 
 # config defaults
 charset=${charset:-"charset utf8 COLLATE utf8_general_ci"}
+# dbargs=${dbargs:-"--defaults-extra-file=$scriptpath/dbcli.cfg"}
+dbargs=${dbargs:-}
 dumpargs=${dumpargs:-}
 dbdump=${dbdump:-mysqldump}
-dbcli=${dbcli:-"mysql"}
-dbargs=${dbargs:-"--defaults-extra-file=$scriptpath/dbcli.cfg"}
+dbdump="${dbdump} ${dbargs} ${dumpargs}"
+dbcli="${dbcli:-"mysql"} $dbargs"
 dbwarn="^Warning: Using a password on the command line interface can be insecure."
 skip_definer="$sed \"s/\\\\/\\\\*!5001[0-9] DEFINER=[^ ][^*]*\\\\*\\\\///g\""
-
-# merge to new variables
-dbargs="-h127.0.0.1 -uroot -pmariadb"
 
 ################################################################################
 # script args
@@ -251,7 +253,7 @@ function select_sql_file () {
 
 function select_database() {
     if [ -z "${dbname}" ]; then
-        get_dbname "${dbcli} ${dbargs}"
+        get_dbname "${dbcli}"
     fi
 }
 
@@ -262,7 +264,7 @@ function import_xz() {
     dbname=$1
     fname=$2
     echo -n "Get uncompressed size"
-    info=`xz -l -v $fname | grep "Uncompressed"`
+    info=$(xz -l -v "$fname" | grep "Uncompressed")
     info=${info##*(}
     size=${info%% *}
     echo " $size Bytes"
@@ -270,43 +272,43 @@ function import_xz() {
 
     # Import database
     echo "Import ./$fname -> $dbname"
-    ldbargs="-hlocalhost -uroot -p123456"
-    cat ./$fname | xz -d | pv -s $size | mysql $dbargs --database $dbname
+    # ldbargs="-hlocalhost -uroot -p123456"
+    xz -d -c "./$fname" | pv -s "$size" | mysql "$dbargs" --database "$dbname"
 }
 
 function action_import () {
     # import database
     echo "Import data from ${filename}"
     check_command_error 'pv';
-    execstr="${dbcli} ${dbargs} --database ${dbname}"
+    execstr="${dbcli} --database ${dbname}"
     if [ "${filename##*.tar.}" == "gz" ] || [ "${filename##*.}" == "tgz" ]; then
         check_command_error 'tar';
-        tarfile=`tar -tf ${filename} | grep -v "/"`
-        pv ${filename}|tar -zxO ${tarfile}|${execstr} 2>&1|grep -v "${dbwarn}"
+        tarfile="$(tar -tf "${filename}" | grep -v "/")"
+        pv "${filename}"|tar -zxO "${tarfile}"|${execstr} 2>&1|grep -v "${dbwarn}"
     elif [ "${filename##*.}" == "gz" ]; then
         check_command_error 'gunzip';
-        pv ${filename} | gunzip -c | ${execstr} | grep -v "${dbwarn}"
+        pv "${filename}"|gunzip -c|${execstr}|grep -v "${dbwarn}"
     elif [ "${filename##*.}" == "xz" ]; then
         check_command_error 'xz';
-        import_xz $dbname $filename
+        import_xz "$dbname" "$filename"
     elif [ "${filename##*.}" == "zip" ]; then
         check_command_error 'unzip';
         command -v unzip >/dev/null 2>&1 || {
             echo >&2 "I Error! require unzip but it's not installed.  Aborting."; exit 1;
         }
-        size=`unzip -l ${filename}|tail -n1|awk '{print $1}'`
-        unzip -p ${filename}|pv -s ${size}|${execstr} 2>&1|grep -v "${dbwarn}"
+        size=$(unzip -l "${filename}"|tail -n1|awk '{print $1}')
+        unzip -p "${filename}"|pv -s "${size}"|${execstr} 2>&1|grep -v "${dbwarn}"
     elif [ "${filename##*.}" == "7z" ]; then
         check_command_error '7za';
-        if [ -n `which 7za` ]; then
-            size=`7za l ${filename}|grep ".sql"|awk '{print $4}'`
-            7za x -so ${filename} 2>/dev/null|pv -s ${size}|${execstr} 2>&1|grep -v "${dbwarn}"
+        if [[ -n $(which 7za) ]]; then
+            size=$(7za l "${filename}"|grep ".sql"|awk '{print $4}')
+            7za x -so "${filename}" 2>/dev/null|pv -s "${size}"|${execstr} 2>&1|grep -v "${dbwarn}"
         else
             echo "Error! Command 7za not found. Please do command brew install p7zip."
             exit;
         fi
     elif [ "${filename##*.}" == "sql" ]; then
-        pv ${filename}|${execstr} 2>&1|grep -v "${dbwarn}"
+        pv "${filename}"|${execstr} 2>&1|grep -v "${dbwarn}"
     else
         echo "Warning! Unknown selected file type. ${filename}"
     fi
@@ -316,7 +318,7 @@ function action_import () {
 # $2: source filename
 action_compress () {
     ext=${1##*.}
-    if [ "$ext" == "" -o "$ext" == "$1" ]; then
+    if [ "$ext" == "" ] || [ "$ext" == "$1" ]; then
         output="$1.tgz"
         ext="tgz"
     else
@@ -325,7 +327,7 @@ action_compress () {
     if [ "$ext" == "zip" ]; then
         check_command_error "zip"
         cmp="zip"
-    elif [ "$ext" == "gz" -o "$ext" == "tgz" ]; then
+    elif [ "$ext" == "gz" ] || [ "$ext" == "tgz" ]; then
         check_command_error "tar"
         cmp="tar zvcf"
     else
@@ -333,10 +335,10 @@ action_compress () {
     fi
     if [ "$cmp" == "" ]; then
         echo "Rename -> ${output}"
-        mv $2 $1
+        mv "$2" "$1"
     else
         echo "${cmp} -> ${output}"
-        ${cmp} ${output} ${2} >/dev/null
+        ${cmp} "${output}" "${2}" >/dev/null
     fi
 }
 
@@ -346,11 +348,11 @@ action_compress () {
 # $3: filename
 action_dumpdata () {
     if [ "$2" == "" ]; then
-        ${dbdump} ${dbargs} ${dumpargs} -R -E ${1} \
-            | sh -c "$skip_definer" | gzip | pv > ${3}
+        ${dbdump} -R -E "${1}" \
+            | sh -c "$skip_definer" | gzip | pv > "${3}"
     else
-        ${dbdump} -R -E ${dbargs} ${dumpargs} -R -E -B ${1} --tables ${2} \
-            | sh -c "$skip_definer" | gzip | pv > ${3}
+        ${dbdump} -R -E -B "${1}" --tables "${2}" \
+            | sh -c "$skip_definer" | gzip | pv > "${3}"
     fi
 }
 
@@ -358,7 +360,7 @@ action_dumpdata () {
 action_export () {
     select_database;
     if [[ "${filename}" == "" ]]; then
-        name="`date \"+%Y%m%d%H%M%S\"`.gz"
+        name="$(date "+%Y%m%d%H%M%S").gz"
         filename="${dbname}-${name}"
     fi
     echo "Dump data -> $filename"
@@ -369,21 +371,21 @@ action_export () {
 case "${action}" in
     "create")
         if [ -z "${dbname}" ]; then
-            read -p "请输入要创建数据库名称:" dbname
+            read -rp "请输入要创建数据库名称:" dbname
         fi
         if [ -z "${dbname}" ]; then
             echo "No database specified."
             exit;
         fi
-        ${dbcli} ${dbargs} -e "CREATE DATABASE IF NOT EXISTS ${dbname} default ${charset};"
+        ${dbcli} -e "CREATE DATABASE IF NOT EXISTS ${dbname} default ${charset};"
         echo "Database '${dbname}' created!"
         ;;
     "remove")
         select_database;
-        read -p "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
+        read -rp "Ary you sure to delete database '${dbname}' (Yes/No)? " yn
         echo ""
         if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
-            ${dbcli} ${dbargs} -e "DROP DATABASE IF EXISTS ${dbname};"
+            ${dbcli} -e "DROP DATABASE IF EXISTS ${dbname};"
             echo "Database '${dbname}' removed!"
         else
             echo 'Cancelled!'
@@ -409,19 +411,18 @@ case "${action}" in
         # select database
         select_database;
         # drop database
-        read -p "Ary you sure to delete database '${dbname}' (Yes/No)?" -n 1 confirm
+        read -rp "Ary you sure to delete database '${dbname}' (Yes/No)?" -n 1 yn
         echo ""
-        if [[ $confirm == 'Y' ]] || [[ $confirm == 'y' ]]; then
-            echo "Drop database ${dbname}"
-            # echo "drop database if exists ${dbname};"|${dbcli} ${dbargs} 2>&1|grep -v "${dbwarn}"
-            echo "drop database if exists ${dbname};"|${dbcli} ${dbargs}
+        if [[ $yn == 'Y' ]] || [[ $yn == 'y' ]]; then
+            ${dbcli} -e "DROP DATABASE IF EXISTS ${dbname};"
+            echo "Database '${dbname}' removed!"
         else
             echo 'Cancelled!'
             exit;
         fi
         # create database
         echo "Create database ${dbname}"
-        echo "create database ${dbname};"|${dbcli} ${dbargs} 2>&1|grep -v "${dbwarn}"
+        echo "create database ${dbname};"|${dbcli} 2>&1|grep -v "${dbwarn}"
         # import database
         action_import;
         ;;
