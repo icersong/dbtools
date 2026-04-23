@@ -60,7 +60,7 @@ function selectfile() {
     if [ "$debug" == "true" ]; then
         echo Select file from: "${1}"
     fi
-    lst="$(ls "${1}" 2>/dev/null)"
+    lst="$(ls -1 ${1} 2>/dev/null)"
     if [ -z "$lst" ]; then
         echo None for select.
     fi
@@ -241,7 +241,8 @@ filename="$3"
 function select_sql_file () {
     # selected sql file
     if [ -z "${filename}" ] || [ ! -f "${filename}" ]; then
-        selectfile "*.(sql|zip|7z|tgz|tar.gz|gz|xz)";
+        #selectfile "*.(sql|zip|7z|tgz|tar.gz|gz|xz)";
+        selectfile "*.sql *.zip *.7z *.tgz *.tar.gz *.gz *.xz";
         if [ ! -f "${selected}" ]; then
             echo "No sql file selected."
             exit;
